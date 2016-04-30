@@ -47,6 +47,29 @@ var handData = [
 	}
 ];
 
+var task = {
+  "time": [
+    {h: 0, m: 10},
+    {h: 1, m: 0},
+  ]};
+
+
+function toMinutes(task) {
+  return [task.time[0].h * 60 + task.time[0].m, task.time[1].h * 60 + task.time[1].m];
+}
+
+function yxToTime(y, x, n) {
+  var angle = Math.atan2(x, -y);
+  var num = (n + Math.round(angle / (Math.PI * 2) * n)) % n;
+  var clockAngle = num * (Math.PI * 2) / n;
+
+  return [num, clockAngle];
+}
+
+function drawTask(task) {
+  var a = toMinutes(task)
+  console.log((a[1] - a[0]) * 6);
+}
 
 function drawClock(){ //create all the clock elements
 	updateData();	//draw them in the correct starting position
@@ -65,6 +88,8 @@ function drawClock(){ //create all the clock elements
         {"x":0,"y":-100},
         {"x":100,"y":0}];
 
+
+  var endAngle = Math.PI; 
   svg.on("mousemove", function() {
     /*var coords = d3.mouse(this);
     console.log(coords);
@@ -74,32 +99,21 @@ function drawClock(){ //create all the clock elements
     m = d3.mouse(face.node())
     mousecoord[0] = m[0]
     mousecoord[1] = m[1]
-    angle = Math.PI * 2 + Math.atan2(m[0], -m[1]);
+    ret = yxToTime(m[1], m[0], 12)
+    arc.endAngle(ret[1])
 
-    angle = Math.round(angle / (Math.PI * 2) * 12) / 12 * (Math.PI * 2);
-    arc.endAngle(angle)
+    //console.log(getAngle(task));
+    drawTask(task);
     shade.attr("d", arc)
 
     //console.log(mousecoord)
-    svg.selectAll("#redcircle")
-    .attr('cx', function(d) { return d[0]; })
-    .attr('cy', function(d) { return d[1]; })
 
   });
   var arc = d3.svg.arc()
     .innerRadius(0)
     .outerRadius(200)
     .startAngle(0)
-    .endAngle(Math.PI);
-
-  face.append('circle')
-    .data([mousecoord])
-    .attr('id', "redcircle")
-    .attr('cx', function(d) { return d[0]; })
-    .attr('cy', function(d) { return d[1]; })
-    .attr('r', 40)
-    .attr('stroke', 'black')
-    .attr('fill', 'red')
+    .endAngle(endAngle);
 
 
   var shade = face.append('path')
