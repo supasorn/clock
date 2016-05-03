@@ -17,5 +17,18 @@ svg {
   fill: none;
   stroke-width: 0;
   pointer-events: all;
-  /*cursor: pointer;*/
+  /*cursor: none;*/
+}
+
+.startline {
+  stroke-width: 3;
+  opacity: 0.8;
+  stroke-linecap: round;
+}
+
+.num {
+  font-size: 50px;
+  fill: #AAAAAA;
+  stroke: #AAAAAA;
+  
 }
