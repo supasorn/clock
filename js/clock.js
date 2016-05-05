@@ -7,17 +7,18 @@ var clockRadius = 80,
 
 var marking = 0;
 var marker = {h0: 0, m0: 0, h1: 0, m1: 0};
+var currentClock;
 
-function drawStartLine(clock, marker) {
-  var ln = clock.select('.startline');
+function drawLine(clock, angle, cls) {
+  var ln = clock.select('.' + cls);
   if (ln.empty()) {
-    ln = clock.append('line').attr("class", "startline")
+    ln = clock.append('line').attr("class", cls)
   }
   ln.attr('x1', 0)
     .attr('y1', 0)
     .attr('x2', 0)
     .attr('y2', -clockRadius)
-    .attr('transform', 'rotate(' + (marker.m0 * 360 / 60) +')')
+    .attr('transform', 'rotate(' + angle +')')
   ln.style("visibility", "visible")
 }
 
@@ -84,12 +85,15 @@ function drawClock(id) {
   svg.append("rect")
     .attr({"class": "overlay" , "width": clockWidth , "height": clockHeight})
     .on("mouseout", function(d) {
-      if (!marking)
+      if (!marking) {
         clock.select('.startline').style("visibility", "hidden");
+        clock.select('.endline').style("visibility", "hidden");
+      }
     })
     .on("mousemove", function(d) {
       var m = d3.mouse(this);
       var o = yxToTime(m[1] - clockHeight * 0.5, m[0] - clockWidth * 0.5, 12);
+      console.log(id)
 
       if (marking) {
         marker.m1 = o[0] * 5;
@@ -97,10 +101,11 @@ function drawClock(id) {
           marker.m1 = 60;
         }
         drawArc(clock, marker);
-        drawStartLine(clock, marker);
+        drawLine(clock, marker.m0 * 360 / 60, 'startline');
+        drawLine(clock, marker.m1 * 360 / 60, 'endline');
       } else {
         marker.m0 = o[0] * 5;
-        drawStartLine(clock, marker);
+        drawLine(clock, marker.m0 * 360 / 60, 'startline');
       }
     })
     .on("click", function(d) {
