@@ -15,21 +15,21 @@ function drawLine(clock, angle, cls) {
     ln = clock.append('line').attr("class", cls)
   }
   ln.attr('x1', 0)
-    .attr('y1', 0)
+    .attr('y1', -clockRadius * 0.5)
     .attr('x2', 0)
     .attr('y2', -clockRadius)
     .attr('transform', 'rotate(' + angle +')')
   ln.style("visibility", "visible")
 }
 
-function drawArc(clock, marker) {
+function drawArc(clock, m0, m1) {
   var arc = d3.svg.arc()
-    .innerRadius(0)
+    .innerRadius(clockRadius * 0.6)
     .outerRadius(clockRadius)
-    .startAngle(marker.m0 * Math.PI * 2 / 60)
-    .endAngle(marker.m1 * Math.PI * 2 / 60);
+    .startAngle(m0 * Math.PI * 2 / 60)
+    .endAngle(m1 * Math.PI * 2 / 60);
 
-  console.log([marker.m0, marker.m1])
+  console.log([m0, m1])
   var ln = clock.select('.arc');
   if (ln.empty()) {
     ln = clock.append('path').attr("class", "arc");
@@ -43,9 +43,14 @@ function drawArc(clock, marker) {
 function yxToTime(y, x, n) {
   var angle = Math.atan2(x, -y);
   var num = (n + Math.round(angle / (Math.PI * 2) * n)) % n;
-  //var clockAngle = num * (Math.PI * 2) / n;
-  var clockAngle = num * (360) / n;
+  var t = Math.round(angle / (Math.PI * 2) * n);
+  // Make sure if cursor is close to 12 from the left side, return n
+  if (t == 0 && !Object.is(t, +0)) 
+    num = n;
+  else 
+    num = (n + t) % n;
 
+  var clockAngle = num * (360) / n;
   return [num, clockAngle];
 }
 
@@ -93,28 +98,36 @@ function drawClock(id) {
     .on("mousemove", function(d) {
       var m = d3.mouse(this);
       var o = yxToTime(m[1] - clockHeight * 0.5, m[0] - clockWidth * 0.5, 12);
-      console.log(id)
 
       if (marking) {
         marker.m1 = o[0] * 5;
-        if (marker.m1 < marker.m0) {
-          marker.m1 = 60;
+        marker.h1 = id;
+
+        d3.selectAll(".arc").remove();
+        if (marker.h0 < marker.h1) {
+          drawArc(d3.select("#clock_" + marker.h0), marker.m0, 60);
+          //drawLine(d3.select("#clock_" + marker.h0), marker.m0 * 360 / 60, 'startline');
+          for (var i = marker.h0 + 1; i < marker.h1; i++) {
+            drawArc(d3.select("#clock_" + i), 0, 60);
+          }
+          drawArc(d3.select("#clock_" + marker.h1), 0, marker.m1);
+
+        } else if (marker.h0 == marker.h1) {
+          if (marker.m1 < marker.m0) 
+            marker.m1 = 60;
+          drawArc(clock, marker.m0, marker.m1);
+          //drawLine(clock, marker.m0 * 360 / 60, 'startline');
+          //drawLine(clock, marker.m1 * 360 / 60, 'endline');
         }
-        drawArc(clock, marker);
-        drawLine(clock, marker.m0 * 360 / 60, 'startline');
-        drawLine(clock, marker.m1 * 360 / 60, 'endline');
       } else {
         marker.m0 = o[0] * 5;
+        marker.h0 = id;
         drawLine(clock, marker.m0 * 360 / 60, 'startline');
       }
     })
     .on("click", function(d) {
-      var m = d3.mouse(this);
-      var o = yxToTime(m[1] - clockHeight * 0.5, m[0] - clockWidth * 0.5, 12);
       marking ^= 1;
-      console.log(marker.m0);
-      clock.select('.startline').style("visibility", "hidden");
-      
+      //clock.select('.startline').style("visibility", "hidden");
     });
 
 }

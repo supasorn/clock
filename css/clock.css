@@ -37,3 +37,7 @@ svg {
   stroke: #AAAAAA;
   
 }
+
+.clock {
+  display: inline;
+}
