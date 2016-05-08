@@ -11,6 +11,7 @@ svg {
 .hour-tick{
 	stroke-width:4;
   stroke-linecap: round;
+  stroke: #777777;
 }
 
 .overlay {
