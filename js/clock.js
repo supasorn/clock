@@ -15,8 +15,15 @@ var currentClock;
 var colors = d3.scale.category10();
 var colorCounter = 0;
 
-var tasks = [new Task()];
-var numTasks = 0; // Can be different from tasks.length.
+var tasks;
+var numTasks; // Can be different from tasks.length.
+var sortIndex;
+
+function renderTemplate(template, data) {
+  var t = document.getElementById(template).innerHTML;
+  Mustache.parse(t);
+  return Mustache.render(t, data);
+}
 
 function Task() {
   this.h0 = 0;
@@ -25,6 +32,16 @@ function Task() {
   this.m1 = 0;
   this.name = "t" + colorCounter;
   this.color = colors(colorCounter++);
+}
+
+Task.prototype.init = function(obj) {
+  this.h0 = obj.h0;
+  this.h1 = obj.h1;
+  this.m0 = obj.m0;
+  this.m1 = obj.m1;
+  this.name = obj.name;
+  this.color = obj.color;
+  return this;
 }
 
 Task.prototype.draw = function() {
@@ -90,6 +107,10 @@ function drawArc(clock, m0, m1, extraclass="") {
 }
 
 function formatTime(h, m) {
+  if (m == 60) {
+    m = 0;
+    h++;
+  }
   var out = h + ":";
   if (h < 10) out = "0" + out;
   if (m < 10) out += "0";
@@ -117,6 +138,28 @@ function drawAllTasks() {
   for (var i = 0; i < tasks.length; i++) {
     tasks[i].draw();
   }
+}
+
+function updateTaskInfo() {
+  d3.selectAll(".task")
+    .data(sortIndex)
+    .enter()
+    .append("div")
+    .attr("class", "task")
+
+  d3.selectAll(".task")
+    .html(function(d, i) {
+      var marker = tasks[d];
+      var view = {
+        from: formatTime(marker.h0, marker.m0),
+        to: formatTime(marker.h1, marker.m1),
+        task_text: i,
+        duration: marker.h1 * 60 + marker.m1 - marker.h0 * 60 - marker.m0
+      };
+      return renderTemplate("template_task", view);
+    })
+    .classed("task_active", function(d) { return d == numTasks })
+    .classed("hide", function(d) { return d == numTasks && !marking; });
 }
 
 function drawClocks() {
@@ -192,8 +235,10 @@ function drawClocks() {
           marker.h1++;
         }
         marker.draw();
+        updateTaskInfo();
         d3.select("#marker").text(formatTime(marker.h0, marker.m0) + " - " + formatTime(marker.h1, marker.m1));
         d3.select("#duration").text(marker.h1 * 60 + marker.m1 - marker.h0 * 60 - marker.m0 + " Mins");
+
       } else {
         marker.m0 = o[0] * 60 / freq;
         marker.h0 = d;
@@ -202,6 +247,10 @@ function drawClocks() {
         d3.select("#marker").text(formatTime(marker.h0, marker.m0));
         d3.select("#duration").text(" ");
       }
+      //tasks.sort(function(a, b) {
+        //return a.h0 * 60 + a.m0 - b.h0 * 60 - b.m0;
+      //});
+
     })
     .on("click", function(d) {
       if (marking == 1) {
@@ -211,12 +260,60 @@ function drawClocks() {
         }
         numTasks ++;
         tasks.push(new Task());
+
         d3.selectAll('.startline').style("visibility", "hidden");
         d3.selectAll('.endline').style("visibility", "hidden");
-        drawAllTasks();
-      } 
+
+        d3.json("save")
+          .header("Content-Type", "application/json")
+          .post(JSON.stringify(tasks.slice(0, -1)));
+
+      } else {
+        sortIndex = d3.range(numTasks + 1);
+        sortIndex.sort(function(a, b) {
+          return tasks[a].h0 * 60 + tasks[a].m0 - tasks[b].h0 * 60 - tasks[b].m0;
+        });
+      }
+      drawAllTasks();
+      updateTaskInfo();
       marking ^= 1;
     });
 }
 
+function initialize() {
+  d3.json("load", function (error, data) {
+    if (error != null) {
+      console.log(error.status);
 
+      tasks = [new Task()];
+      numTasks = 0; // Can be different from tasks.length.
+      sortIndex = [0];
+    } else {
+      tasks = data.tasks;
+      console.log(tasks);
+      numTasks = tasks.length;
+
+      for (var i = 0; i < numTasks; i++) {
+        tasks[i] = new Task().init(tasks[i]);
+      }
+
+      tasks.push(new Task());
+      sortIndex = d3.range(numTasks + 1);
+      sortIndex.sort(function(a, b) {
+        return tasks[a].h0 * 60 + tasks[a].m0 - tasks[b].h0 * 60 - tasks[b].m0;
+      });
+      //sortIndex = d3.range(numTasks);
+      console.log(sortIndex)
+      console.log(numTasks)
+
+      //console.log(tasks)
+      drawAllTasks();
+      updateTaskInfo();
+      
+      //v = JSON.parse(data["tasks"]);
+      //console.log(v)
+      //alert(data);
+    }
+  });
+
+}

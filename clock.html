@@ -3,14 +3,25 @@
 <link rel="stylesheet" href="css/clock.css">
 <body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+<script type="text/javascript" src="js/mustache.min.js" ></script>
+
 <script src="js/clock.js"></script>
 <div id="newtaskinfo">
   <p id="duration"></p>
   <p id="marker"></p>
 </div>
-
 <div id="allclock"></div>
+<div id="tasks"></div>
+
+<div id="template_task" class="template">
+  <span class="from">{{from}}</span> - <span class="to">{{to}}</span>
+  <span class="task_text">{{task_text}}</span>
+  <span class="duration">{{duration}}</span>
+</div>
+
+
 <script>
+  initialize();
   drawClocks();
 </script>
 </body>

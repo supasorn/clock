@@ -63,3 +63,35 @@ svg {
 p {
   margin: 0px;
 }
+
+#tasks {
+  width: 100%;
+  margin-top: 50px;
+}
+
+.task {
+  width: 400px;
+  display: block;
+  background-color: #DDDDDD;
+  padding: 10px;
+  margin: 0 auto;
+}
+
+.template {
+  display: none;
+}
+
+.duration {
+  float: right;
+}
+
+.task_text {
+  margin-left: 20px;
+}
+
+.task_active {
+  background-color: #ffe6e6;
+}
+.hide {
+  display: none;
+}
