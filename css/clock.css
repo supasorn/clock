@@ -7,7 +7,6 @@ svg {
 	font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
 }
 
-
 .hour-tick{
 	stroke-width:4;
   stroke-linecap: round;
@@ -36,9 +35,12 @@ svg {
   font-size: 50px;
   fill: #AAAAAA;
   stroke: #AAAAAA;
-  
 }
 
+.join {
+  opacity: 0.5;
+  stroke-linecap: round;
+}
 .clock {
   display: inline;
 }

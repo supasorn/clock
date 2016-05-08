@@ -5,35 +5,62 @@ var clockRadius = 60,
     hourTickStart = clockRadius,
     hourTickLength = -4;
 
+var arcInner = 0.6;
+
+var joinWidth = 10;
+
 var marking = 0;
-var marker = {h0: 0, m0: 0, h1: 0, m1: 0};
 var currentClock;
+var colors = d3.scale.category10();
+var colorCounter = 0;
 
-var tasks = [];
+var tasks = [new Task()];
+var numTasks = 0; // Can be different from tasks.length.
 
-function Task(marker) {
-  this.h0 = marker.h0;
-  this.m0 = marker.m0;
-  this.h1 = marker.h1;
-  this.m1 = marker.m1;
+function Task() {
+  this.h0 = 0;
+  this.m0 = 0;
+  this.h1 = 0;
+  this.m1 = 0;
+  this.name = "t" + colorCounter;
+  this.color = colors(colorCounter++);
 }
 
 Task.prototype.draw = function() {
+  d3.selectAll("." + this.name).remove();
   if (this.h0 < this.h1) {
-    drawArc(d3.select("#clock_" + this.h0), this.m0, 60);
-    for (var i = this.h0 + 1; i < this.h1; i++) {
-      drawArc(d3.select("#clock_" + i), 0, 60);
+    drawArc(d3.select("#clock_" + this.h0), this.m0, 60, this.name);
+    for (var i = this.h0; i < this.h1; i++) {
+      var t = d3.select("#clock_" + i);
+      drawJoin(t, this.name);
+      if (i > this.h0)
+        drawArc(t, 0, 60, this.name);
     }
-    drawArc(d3.select("#clock_" + this.h1), 0, this.m1);
+    drawArc(d3.select("#clock_" + this.h1), 0, this.m1, this.name);
   } else if (this.h0 == this.h1) {
-    drawArc(d3.select("#clock_" + this.h0), this.m0, this.m1);
+    drawArc(d3.select("#clock_" + this.h0), this.m0, this.m1, this.name);
   }
+  d3.selectAll("." + this.name).attr("fill", this.color);
+  d3.selectAll("." + this.name).attr("stroke", this.color);
+}
+
+function drawJoin(clock, extraclass) {
+  var ln = clock.insert('line', ':first-child')
+    .attr("class", "join");
+  if (extraclass != "")
+    ln.classed(extraclass, true);
+
+  ln.attr('x1', 0)
+    .attr('y1', -clockRadius - joinWidth / 2)
+    .attr('x2', clockWidth)
+    .attr('y2', -clockRadius - joinWidth / 2)
+    .attr('stroke-width', joinWidth)
 }
 
 function drawLine(clock, angle, cls) {
   var ln = clock.select('.' + cls);
   if (ln.empty()) {
-    ln = clock.insert('line', ":first-child").attr("class", cls)
+    ln = clock.insert('line', ':first-child').attr("class", cls)
   }
   ln.attr('x1', 0)
     .attr('y1', -clockRadius * 0.5)
@@ -43,21 +70,22 @@ function drawLine(clock, angle, cls) {
   ln.style("visibility", "visible")
 }
 
-function drawArc(clock, m0, m1) {
+function drawArc(clock, m0, m1, extraclass="") {
   var arc = d3.svg.arc()
-    .innerRadius(clockRadius * 0.6)
+    .innerRadius(clockRadius * arcInner)
     .outerRadius(clockRadius)
     .startAngle(m0 * Math.PI * 2 / 60)
-    .endAngle(m1 * Math.PI * 2 / 60);
+    .endAngle(m1 * Math.PI * 2 / 60)
+    .cornerRadius(5);
 
-  var ln = clock.select('.arc');
-  if (ln.empty()) {
-    ln = clock.insert('path', ':first-child').attr("class", "arc");
-  }
+  var ln = clock.insert('path', ':first-child').attr("class", "arc");
+  if (extraclass != "")
+    ln.classed(extraclass, true);
+
   ln.attr("d", arc)
     .attr("fill", "red")
     .attr("stroke-width", 0)
-    .attr("opacity", 0.5)
+    .attr("opacity", 0.6)
 }
 
 function yxToTime(y, x, n, usenoon = false) {
@@ -76,6 +104,7 @@ function yxToTime(y, x, n, usenoon = false) {
 
 
 function drawAllTasks() {
+  d3.selectAll(".arc").remove();
   for (var i = 0; i < tasks.length; i++) {
     tasks[i].draw();
   }
@@ -94,6 +123,7 @@ function drawClocks() {
     .data(d3.range(1, 9))
     .enter()
     .append('g')
+    .attr("class", "clock")
     .attr("id", function(d) {return "clock_" + d;})
     .attr('transform', function(d, i) {return 'translate(' + (clockWidth * i + clockRadius + clockMargin) + ',' + (clockRadius + clockMargin) + ')'});
 
@@ -130,27 +160,23 @@ function drawClocks() {
     .on("mousemove", function(d) {
       var clock = d3.select(this.parentNode);
       var m = d3.mouse(this);
+      var r = m[1] * m[1] + m[0] * m[0];
+      if (r < (arcInner * arcInner * clockRadius * clockRadius)) return;
       var o = yxToTime(m[1], m[0], 12, marking);
 
+      var marker = tasks[numTasks];
       if (marking) {
         marker.m1 = o[0] * 5;
         marker.h1 = d;
+        if (marker.h0 == marker.h1 && marker.m1 < marker.m0) 
+          marker.m1 = 60;
 
-        d3.selectAll(".arc").remove();
-        if (marker.h0 < marker.h1) {
-          drawArc(d3.select("#clock_" + marker.h0), marker.m0, 60);
-          for (var i = marker.h0 + 1; i < marker.h1; i++) {
-            drawArc(d3.select("#clock_" + i), 0, 60);
-          }
-          drawArc(d3.select("#clock_" + marker.h1), 0, marker.m1);
-
-        } else if (marker.h0 == marker.h1) {
-          if (marker.m1 < marker.m0) 
-            marker.m1 = 60;
-          drawArc(clock, marker.m0, marker.m1);
-          //drawLine(clock, marker.m0 * 360 / 60, 'startline');
-          //drawLine(d3.select("#clock_" + marker.h1), marker.m1 * 360 / 60, 'endline');
+        if (marker.m1 == 60) { // Add dangling join edge
+          marker.m1 = 0;
+          marker.h1++;
         }
+        
+        marker.draw();
       } else {
         marker.m0 = o[0] * 5;
         marker.h0 = d;
@@ -160,11 +186,16 @@ function drawClocks() {
     })
     .on("click", function(d) {
       if (marking == 1) {
-        tasks.push(new Task(marker));
+        if (tasks[numTasks].m1 == 0) { // To remove dangling join edge
+          tasks[numTasks].m1 = 60;
+          tasks[numTasks].h1--;
+        }
+        numTasks ++;
+        tasks.push(new Task());
         d3.selectAll('.startline').style("visibility", "hidden");
         d3.selectAll('.endline').style("visibility", "hidden");
-        //drawAllTasks();
-      }
+        drawAllTasks();
+      } 
       marking ^= 1;
     });
 
