@@ -8,6 +8,7 @@ var clockRadius = 60,
 var arcInner = 0.6;
 
 var joinWidth = 10;
+var freq = 12;
 
 var marking = 0;
 var currentClock;
@@ -88,6 +89,14 @@ function drawArc(clock, m0, m1, extraclass="") {
     .attr("opacity", 0.6)
 }
 
+function formatTime(h, m) {
+  var out = h + ":";
+  if (h < 10) out = "0" + out;
+  if (m < 10) out += "0";
+  out += m;
+  return out;
+}
+
 function yxToTime(y, x, n, usenoon = false) {
   var angle = Math.atan2(x, -y);
   var num = (n + Math.round(angle / (Math.PI * 2) * n)) % n;
@@ -111,6 +120,13 @@ function drawAllTasks() {
 }
 
 function drawClocks() {
+  d3.select("body").on("keydown", function() {
+    if (d3.event.shiftKey) 
+      freq = 60;
+  }).on ("keyup", function() {
+    if (!d3.event.shiftKey) 
+      freq = 12;
+  });
   var svg = d3.select("#allclock").append('svg')
     .attr("width", clockWidth * 8)
     .attr("height", clockHeight);
@@ -162,11 +178,11 @@ function drawClocks() {
       var m = d3.mouse(this);
       var r = m[1] * m[1] + m[0] * m[0];
       if (r < (arcInner * arcInner * clockRadius * clockRadius)) return;
-      var o = yxToTime(m[1], m[0], 12, marking);
+      var o = yxToTime(m[1], m[0], freq, marking);
 
       var marker = tasks[numTasks];
       if (marking) {
-        marker.m1 = o[0] * 5;
+        marker.m1 = o[0] * 60 / freq;
         marker.h1 = d;
         if (marker.h0 == marker.h1 && marker.m1 < marker.m0) 
           marker.m1 = 60;
@@ -175,13 +191,16 @@ function drawClocks() {
           marker.m1 = 0;
           marker.h1++;
         }
-        
         marker.draw();
+        d3.select("#marker").text(formatTime(marker.h0, marker.m0) + " - " + formatTime(marker.h1, marker.m1));
+        d3.select("#duration").text(marker.h1 * 60 + marker.m1 - marker.h0 * 60 - marker.m0 + " Mins");
       } else {
-        marker.m0 = o[0] * 5;
+        marker.m0 = o[0] * 60 / freq;
         marker.h0 = d;
         //console.log(marker.m0);
         drawLine(clock, marker.m0 * 360 / 60, 'startline');
+        d3.select("#marker").text(formatTime(marker.h0, marker.m0));
+        d3.select("#duration").text(" ");
       }
     })
     .on("click", function(d) {
@@ -198,8 +217,6 @@ function drawClocks() {
       } 
       marking ^= 1;
     });
-
-
 }
 
 
