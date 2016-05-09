@@ -14,11 +14,13 @@
 <div id="tasks"></div>
 
 <div id="template_task" class="template">
-  <span class="from">{{from}}</span> - <span class="to">{{to}}</span>
-  <span class="task_text">{{task_text}}</span>
+    <span class="from">{{from}}</span> - <span class="to">{{to}}</span>
+  <input type="text" class="task_text" value={{task_text}}>
+  <div class="time_wrapper">
+  </div>
+  <button class="remove_button">Remove</button>
   <span class="duration">{{duration}}</span>
 </div>
-
 
 <script>
   initialize();

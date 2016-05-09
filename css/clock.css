@@ -70,11 +70,22 @@ p {
 }
 
 .task {
-  width: 400px;
+  width: 500px;
   display: block;
   background-color: #DDDDDD;
   padding: 10px;
   margin: 0 auto;
+
+  border-radius: 10px;
+  margin-bottom: 5px;
+}
+
+.time_wrapper {
+  display: inline;
+  /*background-color: red;*/
+  padding: 5px;
+  border-radius: 5px;
+  opacity: 0.5;
 }
 
 .template {
@@ -83,10 +94,20 @@ p {
 
 .duration {
   float: right;
+  line-height: 30px;
 }
 
-.task_text {
+input[type="text"].task_text {
+  font-size: 15px;
+  padding: 5px;
   margin-left: 20px;
+  border: solid 5px #c9c9c9;
+  transition: border 0.3s;
+  background-color: #c9c9c9;
+}
+input[type="text"].task_text:focus {
+  border: solid 5px #969696;
+  outline: none;
 }
 
 .task_active {
@@ -94,4 +115,26 @@ p {
 }
 .hide {
   display: none;
+}
+button {
+  background-color: #e7e7e7;
+  border: none;
+  padding: 5px 8px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  outline: none;
+  /*font-size: 16px;*/
+  cursor: pointer;
+}
+button:hover {
+  background-color: #f7f7f7;
+}
+button:active {
+  background-color: #ffffff;
+}
+
+.minute-hand {
+  stroke-width: 3px;
+  stroke-linecap: round;
 }

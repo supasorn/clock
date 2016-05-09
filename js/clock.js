@@ -13,11 +13,46 @@ var freq = 12;
 var marking = 0;
 var currentClock;
 var colors = d3.scale.category10();
-var colorCounter = 0;
 
 var tasks;
 var numTasks; // Can be different from tasks.length.
 var sortIndex;
+var idCounter = 0;
+
+var hourHandLength = 2*clockRadius/3,
+    minuteHandLength = clockRadius * 0.8,
+    secondHandLength = clockRadius-12,
+    secondHandBalance = 30;
+
+var hourScale = d3.scale.linear()
+	.range([0,330])
+	.domain([0,11]);
+
+var minuteScale = secondScale = d3.scale.linear()
+	.range([0,354])
+	.domain([0,59]);
+
+var handData = [
+	{
+		type:'hour',
+		value:0,
+		length:-hourHandLength,
+		scale:hourScale
+	},
+	{
+		type:'minute',
+		value:0,
+		length:-minuteHandLength,
+		scale:minuteScale
+	},
+	{
+		type:'second',
+		value:0,
+		length:-secondHandLength,
+		scale:secondScale,
+		balance:secondHandBalance
+	}
+];
 
 function renderTemplate(template, data) {
   var t = document.getElementById(template).innerHTML;
@@ -30,8 +65,20 @@ function Task() {
   this.m0 = 0;
   this.h1 = 0;
   this.m1 = 0;
-  this.name = "t" + colorCounter;
-  this.color = colors(colorCounter++);
+  this.name = "t" + idCounter;
+  this.id = "task_" + (idCounter++); 
+
+  var usedColors = new Set();
+  for (var i = 0; i < tasks.length; i++) {
+    usedColors.add(tasks[i].color);
+  }
+  
+  for (var i = 0; i < 20; i++) {
+    if (!usedColors.has(colors(i))) {
+      this.color = colors(i);
+      break;
+    }
+  }
 }
 
 Task.prototype.init = function(obj) {
@@ -40,26 +87,27 @@ Task.prototype.init = function(obj) {
   this.m0 = obj.m0;
   this.m1 = obj.m1;
   this.name = obj.name;
+  this.id = obj.id;
   this.color = obj.color;
   return this;
 }
 
 Task.prototype.draw = function() {
-  d3.selectAll("." + this.name).remove();
+  d3.selectAll("." + this.id).remove();
   if (this.h0 < this.h1) {
-    drawArc(d3.select("#clock_" + this.h0), this.m0, 60, this.name);
+    drawArc(d3.select("#clock_" + this.h0), this.m0, 60, this.id);
     for (var i = this.h0; i < this.h1; i++) {
       var t = d3.select("#clock_" + i);
-      drawJoin(t, this.name);
+      drawJoin(t, this.id);
       if (i > this.h0)
-        drawArc(t, 0, 60, this.name);
+        drawArc(t, 0, 60, this.id);
     }
-    drawArc(d3.select("#clock_" + this.h1), 0, this.m1, this.name);
+    drawArc(d3.select("#clock_" + this.h1), 0, this.m1, this.id);
   } else if (this.h0 == this.h1) {
-    drawArc(d3.select("#clock_" + this.h0), this.m0, this.m1, this.name);
+    drawArc(d3.select("#clock_" + this.h0), this.m0, this.m1, this.id);
   }
-  d3.selectAll("." + this.name).attr("fill", this.color);
-  d3.selectAll("." + this.name).attr("stroke", this.color);
+  d3.selectAll("." + this.id).attr("fill", this.color);
+  d3.selectAll("." + this.id).attr("stroke", this.color);
 }
 
 function drawJoin(clock, extraclass) {
@@ -75,6 +123,13 @@ function drawJoin(clock, extraclass) {
     .attr('stroke-width', joinWidth)
 }
 
+function updateSortIndex() {
+  sortIndex = d3.range(numTasks + 1);
+  sortIndex.sort(function(a, b) {
+    return tasks[a].h0 * 60 + tasks[a].m0 - tasks[b].h0 * 60 - tasks[b].m0;
+  });
+
+}
 function drawLine(clock, angle, cls) {
   var ln = clock.select('.' + cls);
   if (ln.empty()) {
@@ -134,7 +189,7 @@ function yxToTime(y, x, n, usenoon = false) {
 
 
 function drawAllTasks() {
-  d3.selectAll(".arc").remove();
+  d3.selectAll(".arc,.join").remove();
   for (var i = 0; i < tasks.length; i++) {
     tasks[i].draw();
   }
@@ -147,19 +202,52 @@ function updateTaskInfo() {
     .append("div")
     .attr("class", "task")
 
-  d3.selectAll(".task")
-    .html(function(d, i) {
+  d3.selectAll(".task").data(sortIndex).exit().remove();
+  var ts = d3.selectAll(".task");
+
+  ts.html(function(d, i) {
       var marker = tasks[d];
       var view = {
         from: formatTime(marker.h0, marker.m0),
         to: formatTime(marker.h1, marker.m1),
-        task_text: i,
+        task_text: marker.name,
         duration: marker.h1 * 60 + marker.m1 - marker.h0 * 60 - marker.m0
       };
       return renderTemplate("template_task", view);
     })
+    //.style("background-color", function(d) { return tasks[d].color; })
     .classed("task_active", function(d) { return d == numTasks })
-    .classed("hide", function(d) { return d == numTasks && !marking; });
+    .classed("hide", function(d) { return d == numTasks && !marking; })
+
+  ts.select(".time_wrapper")
+  .style("background-color", function(d) { return tasks[d].color; });
+
+  ts.select(".task_text").on("keyup", function(d) {
+    tasks[d].name = this.value;
+    saveTasksToFile();
+  });
+
+  ts.select(".remove_button").on("click", function(d, i) {
+    tasks.splice(d, 1);
+    numTasks --;
+    console.log(numTasks);
+    console.log(tasks);
+
+    updateSortIndex();
+    updateTaskInfo();
+    drawAllTasks();
+    saveTasksToFile();
+  });
+
+}
+
+function saveTasksToFile() {
+  d3.json("save")
+    .header("Content-Type", "application/json")
+    .post(JSON.stringify(
+          {"tasks": tasks.slice(0, -1),
+            "idCounter": idCounter
+      }));
 }
 
 function drawClocks() {
@@ -179,7 +267,7 @@ function drawClocks() {
     .domain([0,11]);
 
   var clocks = svg.selectAll(".clock")
-    .data(d3.range(1, 9))
+    .data([8, 9, 10, 11, 12, 1, 2, 3])
     .enter()
     .append('g')
     .attr("class", "clock")
@@ -264,20 +352,61 @@ function drawClocks() {
         d3.selectAll('.startline').style("visibility", "hidden");
         d3.selectAll('.endline').style("visibility", "hidden");
 
-        d3.json("save")
-          .header("Content-Type", "application/json")
-          .post(JSON.stringify(tasks.slice(0, -1)));
+        saveTasksToFile();
 
       } else {
-        sortIndex = d3.range(numTasks + 1);
-        sortIndex.sort(function(a, b) {
-          return tasks[a].h0 * 60 + tasks[a].m0 - tasks[b].h0 * 60 - tasks[b].m0;
-        });
+        updateSortIndex();
       }
       drawAllTasks();
       updateTaskInfo();
       marking ^= 1;
     });
+
+
+
+
+  setInterval(function(){
+    updateData();
+    moveHands();
+  }, 1000);
+
+  updateData();
+	var hands = d3.select("#clock_" + (new Date()).getHours() % 12).append('g').attr('id','clock-hands');
+
+	hands.selectAll('line')
+		.data([handData[1], handData[2]])
+			.enter()
+			.append('line')
+			.attr('class', function(d){
+				return d.type + '-hand';
+			})
+			.attr('x1',0)
+			.attr('y1',function(d){
+				return d.balance ? d.balance : 0;
+			})
+			.attr('x2',0)
+			.attr('y2',function(d){
+				return d.length;
+			})
+			.attr('transform',function(d){
+				return 'rotate('+ d.scale(d.value) +')';
+			});
+}
+
+function updateData(){
+	var t = new Date();
+	handData[0].value = (t.getHours() % 12) + t.getMinutes()/60 ;
+	handData[1].value = t.getMinutes();
+	handData[2].value = t.getSeconds();
+}
+
+function moveHands(){
+	d3.select('#clock-hands').selectAll('line')
+	.data([handData[1], handData[2]])
+		.transition()
+		.attr('transform',function(d){
+			return 'rotate('+ d.scale(d.value) +')';
+		});
 }
 
 function initialize() {
@@ -289,6 +418,7 @@ function initialize() {
       numTasks = 0; // Can be different from tasks.length.
       sortIndex = [0];
     } else {
+      idCounter = data.idCounter;
       tasks = data.tasks;
       console.log(tasks);
       numTasks = tasks.length;
@@ -298,21 +428,10 @@ function initialize() {
       }
 
       tasks.push(new Task());
-      sortIndex = d3.range(numTasks + 1);
-      sortIndex.sort(function(a, b) {
-        return tasks[a].h0 * 60 + tasks[a].m0 - tasks[b].h0 * 60 - tasks[b].m0;
-      });
-      //sortIndex = d3.range(numTasks);
-      console.log(sortIndex)
-      console.log(numTasks)
+      updateSortIndex();
 
-      //console.log(tasks)
       drawAllTasks();
       updateTaskInfo();
-      
-      //v = JSON.parse(data["tasks"]);
-      //console.log(v)
-      //alert(data);
     }
   });
 
